@@ -1,0 +1,6 @@
+{
+  "name": "MDoNER Logistics Intelligence Core",
+  "description": "Tactical GIS logistics and predictive landslide resilience platform for the Guwahati-Silchar lifeline corridor (Problem Statement 26002).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
