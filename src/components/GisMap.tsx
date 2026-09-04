@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Waypoint, SimulationState, Convoy } from '../types';
 import { INITIAL_WAYPOINTS } from '../data/mockData';
 import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
@@ -30,25 +30,20 @@ interface GisMapProps {
 }
 
 const nh6Coords: [number, number][] = [
-  [26.18, 91.75], // Guwahati
-  [26.05, 91.88], // Jorabat junction
-  [25.90, 91.95], // Nongpoh
-  [25.68, 91.91], // Umiam Lake
-  [25.57, 91.89], // Shillong
-  [25.45, 92.20], // Jowai
-  [25.25, 92.32], // Khliehriat
-  [25.105, 92.368], // Sonapur Tunnel Choke Point
-  [24.95, 92.50], // Badarpur
-  [24.83, 92.77]  // Silchar Medical College
+  [26.185, 91.748], [26.142, 91.790], [26.105, 91.868], [26.052, 91.885],
+  [25.968, 91.882], [25.901, 91.881], [25.820, 91.875], [25.720, 91.890],
+  [25.660, 91.905], [25.602, 91.898], [25.578, 91.885], [25.565, 91.950],
+  [25.535, 92.055], [25.498, 92.140], [25.445, 92.205], [25.380, 92.285],
+  [25.310, 92.315], [25.245, 92.365], [25.170, 92.385], [25.105, 92.368],
+  [25.045, 92.395], [24.985, 92.485], [24.915, 92.565], [24.870, 92.655],
+  [24.833, 92.779]
 ];
 
 const nh27Coords: [number, number][] = [
-  [26.18, 91.75], // Guwahati
-  [26.34, 92.68], // Nagaon
-  [25.75, 93.17], // Lumding
-  [25.17, 93.02], // Haflong (Dima Hasao)
-  [24.95, 92.70], // Sub-route connector
-  [24.83, 92.77]  // Silchar
+  [26.185, 91.748], [26.155, 91.980], [26.120, 92.150], [26.175, 92.520],
+  [26.345, 92.685], [26.130, 92.860], [25.985, 92.980], [25.750, 93.170],
+  [25.580, 93.150], [25.415, 93.120], [25.270, 93.160], [25.170, 93.020],
+  [25.080, 92.920], [24.960, 92.840], [24.833, 92.779]
 ];
 
 export const GisMap: React.FC<GisMapProps> = ({
@@ -68,41 +63,54 @@ export const GisMap: React.FC<GisMapProps> = ({
     thermal: false
   });
   const [selectedWaypoint, setSelectedWaypoint] = useState<Waypoint | null>(null);
+  const [showSonapurIntel, setShowSonapurIntel] = useState(true);
 
-  // Animated truck progression (0 to 1 along path)
-  const [truckProgress, setTruckProgress] = useState<number>(0.38);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTruckProgress((prev) => {
-        const next = prev + 0.003;
-        return next > 0.95 ? 0.05 : next;
-      });
-    }, 120);
-    return () => clearInterval(interval);
-  }, []);
+  // Animated truck progression (array index tracking)
+  const [truckIndex, setTruckIndex] = useState<number>(0);
 
   const isCriticalRain = simulationState.precipitation > 100 || simulationState.isLandslideTriggered;
   const isCorridorClosed = simulationState.isCorridorShutdown;
   const isDiverted = simulationState.isDiverted;
 
-  const getPositionAlongPath = (points: [number, number][], progress: number): [number, number] => {
-    const totalSegments = points.length - 1;
-    const scaledProgress = Math.max(0, Math.min(progress, 0.999)) * totalSegments;
-    const segmentIndex = Math.floor(scaledProgress);
-    const segmentFraction = scaledProgress - segmentIndex;
+  const prevDiverted = useRef(isDiverted);
 
-    const p1 = points[segmentIndex];
-    const p2 = points[segmentIndex + 1] || points[segmentIndex];
+  useEffect(() => {
+    if (isDiverted && !prevDiverted.current) {
+      // Transition vehicle index to closest waypoint on newly activated bypass
+      const currentPos = nh6Coords[Math.min(truckIndex, nh6Coords.length - 1)];
+      let minD = Infinity;
+      let minI = 0;
+      nh27Coords.forEach((pt, i) => {
+        const d = (pt[0] - currentPos[0]) ** 2 + (pt[1] - currentPos[1]) ** 2;
+        if (d < minD) { minD = d; minI = i; }
+      });
+      setTruckIndex(minI);
+    }
+    prevDiverted.current = isDiverted;
+  }, [isDiverted, truckIndex]);
 
-    const lat = p1[0] + (p2[0] - p1[0]) * segmentFraction;
-    const lng = p1[1] + (p2[1] - p1[1]) * segmentFraction;
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTruckIndex((prev) => {
+        const activeRoute = simulationState.isDiverted ? nh27Coords : nh6Coords;
+        const totalElems = activeRoute.length;
+        const next = prev + 1;
+        return next >= totalElems ? 0 : next;
+      });
+    }, 800);
+    return () => clearInterval(interval);
+  }, [simulationState.isDiverted]);
 
-    return [lat, lng];
-  };
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedWaypoint(null);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
 
   const activePoints = isDiverted ? nh27Coords : nh6Coords;
-  const truckPos = getPositionAlongPath(activePoints, truckProgress);
+  const truckPos = activePoints[Math.min(truckIndex, activePoints.length - 1)];
 
   return (
     <div id="gis-radar-container" className="relative w-full bg-[#080808] rounded-xl border border-[#2A2A2A] overflow-hidden flex flex-col shadow-2xl">
@@ -275,60 +283,69 @@ export const GisMap: React.FC<GisMapProps> = ({
         )}
 
         {/* Floating HUD Window: Sonapur Choke Point Sensor Telemetry */}
-        <div className="absolute top-4 right-4 w-72 bg-[#111111]/95 backdrop-blur-md p-3 rounded-xl border border-[#2A2A2A] shadow-2xl z-[1000] pointer-events-none">
+        <div className="absolute top-4 right-4 w-72 bg-[#111111]/95 backdrop-blur-md p-3 rounded-xl border border-[#2A2A2A] shadow-2xl z-[1000] pointer-events-auto">
           <div className="flex items-center justify-between pb-2 border-b border-[#2A2A2A]">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => setShowSonapurIntel(!showSonapurIntel)}>
               <span className={`w-2 h-2 rounded-full ${isCriticalRain || isCorridorClosed ? 'bg-red-500 animate-ping' : 'bg-[#00FF00]'}`}></span>
-              <span className={`font-mono text-[11px] font-bold tracking-wider ${isCriticalRain || isCorridorClosed ? 'text-red-400' : 'text-[#E4E3E0]'}`}>
+              <span className={`font-mono text-[11px] font-bold tracking-wider ${isCriticalRain || isCorridorClosed ? 'text-red-400' : 'text-[#E4E3E0] hover:text-white transition-colors'}`}>
                 SONAPUR CHOKE POINT
               </span>
             </div>
-            <span className="font-mono text-[10px] text-[#888888]">KM 142.8</span>
-          </div>
-
-          <div className="flex flex-col gap-2 mt-2">
-            {/* Precipitation Telemetry */}
-            <div>
-              <div className="flex justify-between font-mono text-[11px] mb-1">
-                <span className="text-[#888888]">Precipitation (24h)</span>
-                <span className={`font-bold ${isCriticalRain ? 'text-[#F27D26] animate-pulse' : 'text-[#00FF00]'}`}>
-                  {simulationState.precipitation} mm
-                </span>
-              </div>
-              <div className="w-full bg-[#222222] h-1.5 rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 ${isCriticalRain ? 'bg-[#F27D26]' : 'bg-[#00FF00]'}`}
-                  style={{ width: `${Math.min(100, (simulationState.precipitation / 160) * 100)}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* Landslide Probability */}
-            <div>
-              <div className="flex justify-between font-mono text-[11px] mb-1">
-                <span className="text-[#888888]">Landslide Risk</span>
-                <span className={`font-bold ${simulationState.landslideProbability > 70 ? 'text-red-400' : 'text-[#00FF00]'}`}>
-                  {simulationState.landslideProbability}%
-                </span>
-              </div>
-              <div className="w-full bg-[#222222] h-1.5 rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 ${simulationState.landslideProbability > 70 ? 'bg-red-600' : 'bg-[#00FF00]'}`}
-                  style={{ width: `${simulationState.landslideProbability}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* Seismic Rig Stat */}
-            <div className={`p-2 rounded-lg mt-1 flex items-center gap-2 border ${isCriticalRain ? 'bg-red-950/20 border-red-800/40' : 'bg-[#1A1A1A] border-[#2A2A2A]'}`}>
-              <Radio size={14} className={isCriticalRain ? 'text-red-400 animate-pulse' : 'text-[#F27D26]'} />
-              <span className={`font-mono text-[10px] leading-tight ${isCriticalRain ? 'text-red-400' : 'text-[#888888]'}`}>
-                {isCriticalRain
-                  ? 'Active Slip Detected: Micro-tremors exceeding threshold'
-                  : 'Sensors: Normal baseline (< 0.2 mm/h)'}
-              </span>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[10px] text-[#888888]">KM 142.8</span>
+              <button
+                onClick={() => setShowSonapurIntel(false)}
+                className="text-[#888888] hover:text-white font-bold px-1 transition-colors"
+                title="Dismiss"
+              >✕</button>
             </div>
           </div>
+
+          {showSonapurIntel && (
+            <div className="flex flex-col gap-2 mt-2 pointer-events-none">
+              {/* Precipitation Telemetry */}
+              <div>
+                <div className="flex justify-between font-mono text-[11px] mb-1">
+                  <span className="text-[#888888]">Precipitation (24h)</span>
+                  <span className={`font-bold ${isCriticalRain ? 'text-[#F27D26] animate-pulse' : 'text-[#00FF00]'}`}>
+                    {simulationState.precipitation} mm
+                  </span>
+                </div>
+                <div className="w-full bg-[#222222] h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${isCriticalRain ? 'bg-[#F27D26]' : 'bg-[#00FF00]'}`}
+                    style={{ width: `${Math.min(100, (simulationState.precipitation / 160) * 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Landslide Probability */}
+              <div>
+                <div className="flex justify-between font-mono text-[11px] mb-1">
+                  <span className="text-[#888888]">Landslide Risk</span>
+                  <span className={`font-bold ${simulationState.landslideProbability > 70 ? 'text-red-400' : 'text-[#00FF00]'}`}>
+                    {simulationState.landslideProbability}%
+                  </span>
+                </div>
+                <div className="w-full bg-[#222222] h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${simulationState.landslideProbability > 70 ? 'bg-red-600' : 'bg-[#00FF00]'}`}
+                    style={{ width: `${simulationState.landslideProbability}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Seismic Rig Stat */}
+              <div className={`p-2 rounded-lg mt-1 flex items-center gap-2 border ${isCriticalRain ? 'bg-red-950/20 border-red-800/40' : 'bg-[#1A1A1A] border-[#2A2A2A]'}`}>
+                <Radio size={14} className={isCriticalRain ? 'text-red-400 animate-pulse' : 'text-[#F27D26]'} />
+                <span className={`font-mono text-[10px] leading-tight ${isCriticalRain ? 'text-red-400' : 'text-[#888888]'}`}>
+                  {isCriticalRain
+                    ? 'Active Slip Detected: Micro-tremors exceeding threshold'
+                    : 'Sensors: Normal baseline (< 0.2 mm/h)'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Bottom-Left GIS Map Legend */}

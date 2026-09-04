@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SimulationState, Convoy, DecisionLog } from '../types';
 import { GisMap } from './GisMap';
 import {
@@ -68,6 +68,16 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
     setHailMessage(`Establishing high-frequency satellite telemetry link with ${convoy.code} (${convoy.pilot || 'Pilot Station'}). Frequency: 284.150 MHz GSAT-7A.`);
     setHailModalOpen(true);
   };
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setHailModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
 
   return (
     <div className="w-full flex flex-col gap-3">
@@ -217,8 +227,8 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
                 id="btn-reroute"
                 onClick={onAuthorizeDiversion}
                 className={`w-full py-2 font-bold text-[10px] uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md ${isDiverted
-                    ? 'bg-[#00FF00] hover:bg-[#00DD00] text-black'
-                    : 'bg-[#F27D26] hover:bg-[#d96818] text-black'
+                  ? 'bg-[#00FF00] hover:bg-[#00DD00] text-black'
+                  : 'bg-[#F27D26] hover:bg-[#d96818] text-black'
                   }`}
               >
                 <Route size={13} />
@@ -415,12 +425,12 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
                 <div key={log.id} className="p-2 bg-[#0C0C0C] rounded-lg border border-[#222222] flex flex-col gap-0.5">
                   <div className="flex items-center justify-between">
                     <span className={`font-bold ${log.severity === 'critical'
-                        ? 'text-red-400'
-                        : log.severity === 'warning'
-                          ? 'text-[#F27D26]'
-                          : log.severity === 'success'
-                            ? 'text-[#00FF00]'
-                            : 'text-[#00FFFF]'
+                      ? 'text-red-400'
+                      : log.severity === 'warning'
+                        ? 'text-[#F27D26]'
+                        : log.severity === 'success'
+                          ? 'text-[#00FF00]'
+                          : 'text-[#00FFFF]'
                       }`}>
                       [{log.timestamp}]
                     </span>
@@ -476,8 +486,8 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
                   key={cat}
                   onClick={() => setSelectedFilterCategory(cat)}
                   className={`font-mono text-[9px] px-2 py-0.5 rounded font-bold uppercase transition-colors whitespace-nowrap cursor-pointer ${selectedFilterCategory === cat
-                      ? 'bg-[#F27D26] text-black'
-                      : 'bg-[#1A1A1A] text-[#888888] hover:text-white'
+                    ? 'bg-[#F27D26] text-black'
+                    : 'bg-[#1A1A1A] text-[#888888] hover:text-white'
                     }`}
                 >
                   {cat}
@@ -496,8 +506,8 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
                     id={`convoy-card-${c.code.toLowerCase()}`}
                     onClick={() => setSimulationState(prev => ({ ...prev, selectedConvoyId: c.id }))}
                     className={`p-2 rounded border cursor-pointer transition-all flex items-center justify-between text-xs font-mono ${isSelected
-                        ? 'bg-[#1A1A1A] border-[#F27D26]'
-                        : 'bg-[#0C0C0C] border-[#222222] hover:border-[#444444]'
+                      ? 'bg-[#1A1A1A] border-[#F27D26]'
+                      : 'bg-[#0C0C0C] border-[#222222] hover:border-[#444444]'
                       }`}
                   >
                     <div className="flex items-center gap-2">
@@ -505,10 +515,10 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
                       <span className="text-[10px] text-[#888888] truncate max-w-[110px]">{c.cargo}</span>
                     </div>
                     <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${isMed && isDiverted
-                        ? 'bg-[#00FF00]/20 text-[#00FF00]'
-                        : isMed && isCriticalRain
-                          ? 'bg-red-900/40 text-red-400'
-                          : 'text-[#888888]'
+                      ? 'bg-[#00FF00]/20 text-[#00FF00]'
+                      : isMed && isCriticalRain
+                        ? 'bg-red-900/40 text-red-400'
+                        : 'text-[#888888]'
                       }`}>
                       {isMed && isDiverted ? 'DIVERTED' : isMed && isCriticalRain ? 'ALERT' : c.status}
                     </span>
@@ -522,8 +532,8 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
 
       {/* Sat-Link Modal */}
       {hailModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md bg-[#111111] border border-[#2A2A2A] p-5 rounded-xl shadow-2xl flex flex-col gap-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setHailModalOpen(false)}>
+          <div className="w-full max-w-md bg-[#111111] border border-[#2A2A2A] p-5 rounded-xl shadow-2xl flex flex-col gap-3" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-2">
               <div className="flex items-center gap-2 text-[#00FFFF]">
                 <Radio size={16} className="animate-pulse" />
