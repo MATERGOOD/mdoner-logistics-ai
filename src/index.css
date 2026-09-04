@@ -102,3 +102,21 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #f27d26;
 }
+
+/* Tactical Leaflet Map Filter */
+.tactical-basemap {
+  filter: brightness(0.7) contrast(1.2) invert(0.9) hue-rotate(190deg);
+}
+
+.leaflet-tooltip.tactical-tooltip {
+  background-color: #111111 !important;
+  color: #EF4444 !important;
+  border: 1px solid #991b1b !important;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: bold;
+  border-radius: 4px;
+}
+.leaflet-tooltip.tactical-tooltip::before {
+  display: none !important;
+}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Waypoint, SimulationState, Convoy } from '../types';
 import { INITIAL_WAYPOINTS } from '../data/mockData';
-import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -30,19 +30,24 @@ interface GisMapProps {
 }
 
 const nh6Coords: [number, number][] = [
-  [26.1445, 91.7362], // Guwahati
-  [25.5788, 91.8933], // Shillong
-  [25.4529, 92.2036], // Jowai
-  [25.1054, 92.3681], // Sonapur Tunnel
-  [24.8333, 92.7789], // Silchar
+  [26.18, 91.75], // Guwahati
+  [26.05, 91.88], // Jorabat junction
+  [25.90, 91.95], // Nongpoh
+  [25.68, 91.91], // Umiam Lake
+  [25.57, 91.89], // Shillong
+  [25.45, 92.20], // Jowai
+  [25.25, 92.32], // Khliehriat
+  [25.105, 92.368], // Sonapur Tunnel Choke Point
+  [24.95, 92.50], // Badarpur
+  [24.83, 92.77]  // Silchar Medical College
 ];
 
 const nh27Coords: [number, number][] = [
-  [26.1445, 91.7362], // Guwahati
-  [26.3468, 92.6840], // Nagaon
-  [25.7500, 93.1700], // Lumding
-  [25.1700, 93.0200], // Haflong
-  [24.8333, 92.7789], // Silchar
+  [26.18, 91.75], // Guwahati
+  [26.34, 92.68], // Nagaon
+  [25.75, 93.17], // Lumding
+  [25.17, 93.02], // Haflong (Dima Hasao)
+  [24.83, 92.77]  // Silchar
 ];
 
 export const GisMap: React.FC<GisMapProps> = ({
@@ -116,10 +121,10 @@ export const GisMap: React.FC<GisMapProps> = ({
 
         <div className="flex items-center gap-2 font-mono text-[10px]">
           <span id="status-tag" className={`px-2 py-0.5 rounded-full text-[9px] font-bold border transition-all ${isCorridorClosed
-              ? 'bg-red-950/40 text-red-400 border-red-800'
-              : isDiverted
-                ? 'bg-cyan-400/10 text-cyan-400 border-cyan-400/20'
-                : 'bg-[#00FF00]/10 text-[#00FF00] border-[#00FF00]/20'
+            ? 'bg-red-950/40 text-red-400 border-red-800'
+            : isDiverted
+              ? 'bg-cyan-400/10 text-cyan-400 border-cyan-400/20'
+              : 'bg-[#00FF00]/10 text-[#00FF00] border-[#00FF00]/20'
             }`}>
             {isCorridorClosed ? 'LOCKED: CORRIDOR SHUTDOWN' : isDiverted ? 'DIVERTED VIA NH-27 (PASSABLE)' : 'ACTIVE: NH-6 PRIMARY'}
           </span>
@@ -140,24 +145,26 @@ export const GisMap: React.FC<GisMapProps> = ({
         )}
 
         <MapContainer
-          center={[25.5788, 92.4827]}
-          zoom={8}
+          center={[25.6, 92.5]}
+          zoom={8.5}
           scrollWheelZoom={true}
           style={{ height: '100%', width: '100%', zIndex: 1 }}
           zoomControl={false}
         >
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
+            className="tactical-basemap"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; OpenStreetMap contributors'
           />
 
           {/* ROUTE 2: ALTERNATIVE BYPASS NH-27 */}
           <Polyline
             positions={nh27Coords}
             pathOptions={{
-              color: isDiverted ? '#00FFFF' : '#333333',
-              weight: isDiverted ? 4 : 3,
-              dashArray: isDiverted ? undefined : '4 4'
+              color: '#00F0FF',
+              weight: 4,
+              dashArray: '8, 8',
+              opacity: isDiverted ? 1 : 0.35
             }}
           />
 
@@ -165,33 +172,38 @@ export const GisMap: React.FC<GisMapProps> = ({
           <Polyline
             positions={nh6Coords}
             pathOptions={{
-              color: isCorridorClosed || isCriticalRain ? '#FF0000' : '#555555',
-              weight: isDiverted ? 2.5 : 4,
+              color: '#EF4444',
+              weight: 5,
               dashArray: isCorridorClosed ? '4 4' : undefined,
               opacity: isDiverted ? 0.35 : 1
             }}
+            className={(isCorridorClosed || isCriticalRain) && !isDiverted ? 'animate-pulse' : ''}
           />
 
           {/* Sonapur Choke Point */}
           <CircleMarker
-            center={[25.1054, 92.3681]}
+            center={[25.105, 92.368]}
             radius={8}
             pathOptions={{
-              color: isCriticalRain || isCorridorClosed ? '#FF0000' : '#666666',
-              fillColor: isCorridorClosed ? '#690005' : isCriticalRain ? '#FF0000' : '#222222',
+              color: isCriticalRain || isCorridorClosed ? '#EF4444' : '#EF4444',
+              fillColor: isCorridorClosed ? '#690005' : isCriticalRain ? '#EF4444' : '#222222',
               fillOpacity: 1,
               weight: 2.5
             }}
             eventHandlers={{
               click: () => setSelectedWaypoint(INITIAL_WAYPOINTS.find(w => w.id === 'snp') || null)
             }}
-          />
+          >
+            <Tooltip permanent direction="right" offset={[10, 0]} className="tactical-tooltip">
+              Choke Point: Sonapur Cut
+            </Tooltip>
+          </CircleMarker>
           {/* Animated radar rings for Sonapur if critical */}
           {(isCriticalRain || isCorridorClosed) && (
             <CircleMarker
-              center={[25.1054, 92.3681]}
+              center={[25.105, 92.368]}
               radius={20}
-              pathOptions={{ color: '#FF0000', fillColor: '#FF0000', fillOpacity: 0.2, weight: 0 }}
+              pathOptions={{ color: '#EF4444', fillColor: '#EF4444', fillOpacity: 0.2, weight: 0 }}
               className="animate-ping"
             />
           )}
@@ -346,8 +358,8 @@ export const GisMap: React.FC<GisMapProps> = ({
             id="overlay-doppler"
             onClick={() => setActiveOverlays(prev => ({ ...prev, doppler: !prev.doppler }))}
             className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold flex items-center gap-1.5 transition-colors border ${activeOverlays.doppler
-                ? 'bg-[#F27D26] text-black border-[#F27D26]'
-                : 'bg-[#1A1A1A] text-[#888888] border-[#2A2A2A] hover:text-white'
+              ? 'bg-[#F27D26] text-black border-[#F27D26]'
+              : 'bg-[#1A1A1A] text-[#888888] border-[#2A2A2A] hover:text-white'
               }`}
           >
             <CloudRain size={12} />
@@ -358,8 +370,8 @@ export const GisMap: React.FC<GisMapProps> = ({
             id="overlay-patrols"
             onClick={() => setActiveOverlays(prev => ({ ...prev, patrols: !prev.patrols }))}
             className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold flex items-center gap-1.5 transition-colors border ${activeOverlays.patrols
-                ? 'bg-[#00FF00]/20 text-[#00FF00] border-[#00FF00]/40'
-                : 'bg-[#1A1A1A] text-[#888888] border-[#2A2A2A] hover:text-white'
+              ? 'bg-[#00FF00]/20 text-[#00FF00] border-[#00FF00]/40'
+              : 'bg-[#1A1A1A] text-[#888888] border-[#2A2A2A] hover:text-white'
               }`}
           >
             <Shield size={12} />
@@ -398,7 +410,7 @@ function GisCustomControls() {
       </button>
       <button
         onClick={() => {
-          map.setView([25.5788, 92.4827], 8);
+          map.setView([25.6, 92.5], 8.5);
         }}
         title="Reset View"
         className="w-7 h-7 rounded flex items-center justify-center text-[#E4E3E0] hover:bg-[#1A1A1A] hover:text-[#F27D26] transition-colors"
