@@ -1,16 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { Waypoint, SimulationState, Convoy } from '../types';
 import { INITIAL_WAYPOINTS } from '../data/mockData';
-import { 
-  ZoomIn, 
-  ZoomOut, 
-  RotateCcw, 
-  Layers, 
-  Shield, 
-  Thermometer, 
-  CloudRain, 
+import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import {
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Layers,
+  Shield,
+  Thermometer,
+  CloudRain,
   Radio
 } from 'lucide-react';
+
+// Fix Leaflet's default missing asset warnings
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png'
+});
 
 interface GisMapProps {
   simulationState: SimulationState;
@@ -18,13 +29,27 @@ interface GisMapProps {
   selectedConvoy: Convoy;
 }
 
+const nh6Coords: [number, number][] = [
+  [26.1445, 91.7362], // Guwahati
+  [25.5788, 91.8933], // Shillong
+  [25.4529, 92.2036], // Jowai
+  [25.1054, 92.3681], // Sonapur Tunnel
+  [24.8333, 92.7789], // Silchar
+];
+
+const nh27Coords: [number, number][] = [
+  [26.1445, 91.7362], // Guwahati
+  [26.3468, 92.6840], // Nagaon
+  [25.7500, 93.1700], // Lumding
+  [25.1700, 93.0200], // Haflong
+  [24.8333, 92.7789], // Silchar
+];
+
 export const GisMap: React.FC<GisMapProps> = ({
   simulationState,
   onAuthorizeDiversion,
   selectedConvoy
 }) => {
-  const [zoomLevel, setZoomLevel] = useState<number>(1);
-  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [activeOverlays, setActiveOverlays] = useState<{
     doppler: boolean;
     contours: boolean;
@@ -55,24 +80,7 @@ export const GisMap: React.FC<GisMapProps> = ({
   const isCorridorClosed = simulationState.isCorridorShutdown;
   const isDiverted = simulationState.isDiverted;
 
-  // Path coordinates
-  const nh6Points = [
-    { x: 140, y: 100 },
-    { x: 260, y: 190 },
-    { x: 350, y: 220 },
-    { x: 460, y: 265 },
-    { x: 680, y: 410 }
-  ];
-
-  const nh27Points = [
-    { x: 140, y: 100 },
-    { x: 290, y: 80 },
-    { x: 430, y: 110 },
-    { x: 560, y: 240 },
-    { x: 680, y: 410 }
-  ];
-
-  const getPositionAlongPoints = (points: { x: number; y: number }[], progress: number) => {
+  const getPositionAlongPath = (points: [number, number][], progress: number): [number, number] => {
     const totalSegments = points.length - 1;
     const scaledProgress = Math.max(0, Math.min(progress, 0.999)) * totalSegments;
     const segmentIndex = Math.floor(scaledProgress);
@@ -81,27 +89,14 @@ export const GisMap: React.FC<GisMapProps> = ({
     const p1 = points[segmentIndex];
     const p2 = points[segmentIndex + 1] || points[segmentIndex];
 
-    const x = p1.x + (p2.x - p1.x) * segmentFraction;
-    const y = p1.y + (p2.y - p1.y) * segmentFraction;
+    const lat = p1[0] + (p2[0] - p1[0]) * segmentFraction;
+    const lng = p1[1] + (p2[1] - p1[1]) * segmentFraction;
 
-    const angleRad = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-    const angleDeg = (angleRad * 180) / Math.PI;
-
-    return { x, y, angle: angleDeg };
+    return [lat, lng];
   };
 
-  const activePoints = isDiverted ? nh27Points : nh6Points;
-  const truckPos = getPositionAlongPoints(activePoints, truckProgress);
-
-  const handleZoom = (delta: number) => {
-    setZoomLevel((prev) => Math.min(Math.max(prev + delta, 0.8), 2.2));
-  };
-
-  const handleResetView = () => {
-    setZoomLevel(1);
-    setPanOffset({ x: 0, y: 0 });
-    setSelectedWaypoint(null);
-  };
+  const activePoints = isDiverted ? nh27Coords : nh6Coords;
+  const truckPos = getPositionAlongPath(activePoints, truckProgress);
 
   return (
     <div id="gis-radar-container" className="relative w-full bg-[#080808] rounded-xl border border-[#2A2A2A] overflow-hidden flex flex-col shadow-2xl">
@@ -120,13 +115,12 @@ export const GisMap: React.FC<GisMapProps> = ({
         </div>
 
         <div className="flex items-center gap-2 font-mono text-[10px]">
-          <span id="status-tag" className={`px-2 py-0.5 rounded-full text-[9px] font-bold border transition-all ${
-            isCorridorClosed 
-              ? 'bg-red-950/40 text-red-400 border-red-800' 
-              : isDiverted 
-              ? 'bg-cyan-400/10 text-cyan-400 border-cyan-400/20' 
-              : 'bg-[#00FF00]/10 text-[#00FF00] border-[#00FF00]/20'
-          }`}>
+          <span id="status-tag" className={`px-2 py-0.5 rounded-full text-[9px] font-bold border transition-all ${isCorridorClosed
+              ? 'bg-red-950/40 text-red-400 border-red-800'
+              : isDiverted
+                ? 'bg-cyan-400/10 text-cyan-400 border-cyan-400/20'
+                : 'bg-[#00FF00]/10 text-[#00FF00] border-[#00FF00]/20'
+            }`}>
             {isCorridorClosed ? 'LOCKED: CORRIDOR SHUTDOWN' : isDiverted ? 'DIVERTED VIA NH-27 (PASSABLE)' : 'ACTIVE: NH-6 PRIMARY'}
           </span>
           <span className="px-2 py-0.5 rounded bg-[#1A1A1A] text-[#888888] border border-[#2A2A2A]">
@@ -135,280 +129,107 @@ export const GisMap: React.FC<GisMapProps> = ({
         </div>
       </div>
 
-      {/* Main Interactive SVG Map Canvas */}
+      {/* Main Interactive Map Canvas */}
       <div className="relative w-full h-[460px] lg:h-[500px] bg-[#050505] overflow-hidden select-none">
-        {/* Radar concentric range circles & tactical crosshairs */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-          <div className="w-[500px] h-[500px] rounded-full border border-[#F27D26]/40"></div>
-          <div className="w-[360px] h-[360px] rounded-full border border-[#2A2A2A] border-dashed"></div>
-          <div className="w-[200px] h-[200px] rounded-full border border-[#2A2A2A]"></div>
-          <div className="w-full h-px bg-[#2A2A2A] absolute"></div>
-          <div className="h-full w-px bg-[#2A2A2A] absolute"></div>
-          {/* Radar sweeping beam */}
-          <div className="w-[500px] h-[500px] rounded-full absolute animate-radar-sweep pointer-events-none opacity-25 bg-[conic-gradient(from_0deg,transparent_0deg,transparent_310deg,rgba(242,125,38,0.25)_360deg)]"></div>
-        </div>
 
-        {/* Map In-Canvas Critical Alert Banner (Bento style) */}
+        {/* Map In-Canvas Critical Alert Banner */}
         {isCriticalRain && !isDiverted && (
-          <div id="alert-banner" className="absolute top-4 left-1/2 -translate-x-1/2 w-[85%] max-w-md bg-red-600 text-white text-[10px] font-mono font-bold p-2 text-center rounded-lg shadow-2xl animate-bounce z-30">
+          <div id="alert-banner" className="absolute top-4 left-1/2 -translate-x-1/2 w-[85%] max-w-md bg-red-600 text-white text-[10px] font-mono font-bold p-2 text-center rounded-lg shadow-2xl animate-bounce z-[1000] pointer-events-none">
             CRITICAL: IMMINENT LANDSLIDE RISK AT SONAPUR CUT
           </div>
         )}
 
-        {/* Map Pan & Zoom Controls */}
-        <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 bg-[#111111]/90 backdrop-blur-md p-1.5 rounded-lg border border-[#2A2A2A] shadow-lg">
-          <button 
-            id="map-zoom-in"
-            onClick={() => handleZoom(0.2)}
-            title="Zoom In"
-            className="w-7 h-7 rounded flex items-center justify-center text-[#E4E3E0] hover:bg-[#1A1A1A] hover:text-[#F27D26] transition-colors"
-          >
-            <ZoomIn size={15} />
-          </button>
-          <button 
-            id="map-zoom-out"
-            onClick={() => handleZoom(-0.2)}
-            title="Zoom Out"
-            className="w-7 h-7 rounded flex items-center justify-center text-[#E4E3E0] hover:bg-[#1A1A1A] hover:text-[#F27D26] transition-colors"
-          >
-            <ZoomOut size={15} />
-          </button>
-          <button 
-            id="map-reset-view"
-            onClick={handleResetView}
-            title="Reset View"
-            className="w-7 h-7 rounded flex items-center justify-center text-[#E4E3E0] hover:bg-[#1A1A1A] hover:text-[#F27D26] transition-colors"
-          >
-            <RotateCcw size={14} />
-          </button>
-        </div>
-
-        {/* Tactical SVG Map */}
-        <svg 
-          id="tactical-gis-svg"
-          className="w-full h-full cursor-crosshair transition-transform duration-200 ease-out"
-          viewBox="0 0 800 500" 
-          style={{
-            transform: `scale(${zoomLevel}) translate(${panOffset.x}px, ${panOffset.y}px)`,
-            transformOrigin: 'center center'
-          }}
+        <MapContainer
+          center={[25.5788, 92.4827]}
+          zoom={8}
+          scrollWheelZoom={true}
+          style={{ height: '100%', width: '100%', zIndex: 1 }}
+          zoomControl={false}
         >
-          <defs>
-            <linearGradient id="primaryRouteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#F27D26" />
-              <stop offset="45%" stopColor={isCriticalRain || isCorridorClosed ? "#FF0000" : "#666666"} />
-              <stop offset="100%" stopColor={isCorridorClosed ? "#7f1d1d" : "#FF0000"} />
-            </linearGradient>
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
+          />
 
-            <linearGradient id="bypassRouteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#F27D26" />
-              <stop offset="40%" stopColor="#00FFFF" />
-              <stop offset="100%" stopColor="#00FF00" />
-            </linearGradient>
-          </defs>
-
-          {/* Topography Elevation Contours */}
-          {activeOverlays.contours && (
-            <g className="contours opacity-30">
-              <path d="M 60 110 C 180 60, 270 140, 370 95 C 450 70, 530 160, 620 120" stroke="#2A2A2A" strokeWidth="1.5" strokeDasharray="5 5" fill="none" />
-              <path d="M 100 170 C 220 120, 310 210, 420 170 C 510 150, 580 230, 690 180" stroke="#2A2A2A" strokeWidth="1.5" strokeDasharray="5 5" fill="none" />
-              <path d="M 140 240 C 260 195, 360 290, 480 250 C 560 220, 640 310, 740 270" stroke="#222222" strokeWidth="1" strokeDasharray="3 4" fill="none" />
-              <path d="M 200 320 C 300 280, 400 370, 530 330 C 610 310, 690 390, 770 350" stroke="#222222" strokeWidth="1" strokeDasharray="3 4" fill="none" />
-            </g>
-          )}
-
-          {/* Severe Rain Storm Cloud Doppler Simulation */}
-          {activeOverlays.doppler && (
-            <g id="doppler-storm-cloud">
-              <ellipse 
-                cx="450" 
-                cy="260" 
-                rx={isCriticalRain ? "110" : "80"} 
-                ry={isCriticalRain ? "75" : "55"} 
-                fill="#F27D26" 
-                fillOpacity={isCriticalRain ? "0.22" : "0.1"} 
-                className="transition-all duration-500"
-              />
-              <ellipse 
-                cx="465" 
-                cy="255" 
-                rx={isCriticalRain ? "70" : "45"} 
-                ry={isCriticalRain ? "50" : "32"} 
-                fill="#FF0000" 
-                fillOpacity={isCriticalRain ? "0.35" : "0.15"} 
-                className="transition-all duration-500"
-              />
-              <circle 
-                cx="460" 
-                cy="260" 
-                r={isCriticalRain ? "28" : "15"} 
-                fill="#FF0000" 
-                fillOpacity={isCriticalRain ? "0.6" : "0.25"} 
-                className={isCriticalRain ? "animate-ping" : ""}
-              />
-              <text x="425" y="215" fill="#F27D26" fontFamily="JetBrains Mono" fontSize="9" fontWeight="bold">
-                {isCriticalRain ? `CELL MAX: ${simulationState.precipitation}mm/h` : 'CELL CONVECTIVE: 65mm/h'}
-              </text>
-            </g>
-          )}
-
-          {/* ROUTE 2: ALTERNATIVE BYPASS NH-27 (Dashed in Bento design) */}
-          <path 
-            id="nh-27"
-            d="M 140 100 L 290 80 L 430 110 L 560 240 L 680 410" 
-            fill="none" 
-            stroke={isDiverted ? "#00FFFF" : "#333333"} 
-            strokeWidth={isDiverted ? "4" : "3"} 
-            strokeDasharray={isDiverted ? "none" : "4 4"}
-            className="transition-all duration-300"
+          {/* ROUTE 2: ALTERNATIVE BYPASS NH-27 */}
+          <Polyline
+            positions={nh27Coords}
+            pathOptions={{
+              color: isDiverted ? '#00FFFF' : '#333333',
+              weight: isDiverted ? 4 : 3,
+              dashArray: isDiverted ? undefined : '4 4'
+            }}
           />
 
           {/* ROUTE 1: PRIMARY DIRECT NH-6 */}
-          <path 
-            id="nh-6"
-            d="M 140 100 L 260 190 L 350 220 L 460 265 L 680 410" 
-            fill="none" 
-            stroke={isCorridorClosed || isCriticalRain ? "#FF0000" : "#555555"} 
-            strokeWidth={isDiverted ? "2.5" : "4"} 
-            strokeDasharray={isCorridorClosed ? "4 4" : "none"} 
-            opacity={isDiverted ? 0.35 : 1}
-            className="transition-all duration-300"
+          <Polyline
+            positions={nh6Coords}
+            pathOptions={{
+              color: isCorridorClosed || isCriticalRain ? '#FF0000' : '#555555',
+              weight: isDiverted ? 2.5 : 4,
+              dashArray: isCorridorClosed ? '4 4' : undefined,
+              opacity: isDiverted ? 0.35 : 1
+            }}
           />
 
-          {/* Route labels */}
-          <g>
-            <text x="280" y="235" fill="#888888" fontFamily="JetBrains Mono" fontSize="9">
-              NH-6 PRIMARY {isCorridorClosed ? '[BLOCKED]' : isCriticalRain ? '[CRITICAL]' : '[ACTIVE]'}
-            </text>
-            <text x="400" y="70" fill={isDiverted ? "#00FFFF" : "#666666"} fontFamily="JetBrains Mono" fontSize="9" fontWeight="bold">
-              NH-27 BYPASS VIA HAFLONG {isDiverted ? '[DIVERTED ACTIVE]' : '[STANDBY]'}
-            </text>
-          </g>
-
-          {/* CRITICAL CHOKE POINT: Sonapur Tunnel KM 142.8 */}
-          <g 
-            id="sonapur-node"
-            transform="translate(460, 265)"
-            className="cursor-pointer"
-            onClick={() => setSelectedWaypoint(INITIAL_WAYPOINTS.find(w => w.id === 'snp') || null)}
-          >
-            {(isCriticalRain || isCorridorClosed) && (
-              <>
-                <circle cx="0" cy="0" r="32" fill="#FF0000" fillOpacity="0.2" className="animate-ping" />
-                <circle cx="0" cy="0" r="20" fill="#FF0000" fillOpacity="0.4" className="animate-pulse" />
-              </>
-            )}
-            <circle 
-              cx="0" 
-              cy="0" 
-              r="14" 
-              fill={isCorridorClosed ? "#690005" : isCriticalRain ? "#FF0000" : "#222222"} 
-              stroke={isCriticalRain || isCorridorClosed ? "#FF0000" : "#666666"} 
-              strokeWidth="2.5" 
+          {/* Sonapur Choke Point */}
+          <CircleMarker
+            center={[25.1054, 92.3681]}
+            radius={8}
+            pathOptions={{
+              color: isCriticalRain || isCorridorClosed ? '#FF0000' : '#666666',
+              fillColor: isCorridorClosed ? '#690005' : isCriticalRain ? '#FF0000' : '#222222',
+              fillOpacity: 1,
+              weight: 2.5
+            }}
+            eventHandlers={{
+              click: () => setSelectedWaypoint(INITIAL_WAYPOINTS.find(w => w.id === 'snp') || null)
+            }}
+          />
+          {/* Animated radar rings for Sonapur if critical */}
+          {(isCriticalRain || isCorridorClosed) && (
+            <CircleMarker
+              center={[25.1054, 92.3681]}
+              radius={20}
+              pathOptions={{ color: '#FF0000', fillColor: '#FF0000', fillOpacity: 0.2, weight: 0 }}
+              className="animate-ping"
             />
-            <text x="-4" y="4" fill="#ffffff" fontFamily="JetBrains Mono" fontSize="12" fontWeight="bold">!</text>
+          )}
 
-            {/* Sonapur Callout Box */}
-            <line x1="12" y1="-12" x2="35" y2="-35" stroke={isCriticalRain || isCorridorClosed ? "#FF0000" : "#666666"} strokeWidth="1.5" />
-            <rect 
-              x="35" 
-              y="-58" 
-              width="145" 
-              height="40" 
-              rx="6" 
-              fill="#111111" 
-              stroke={isCriticalRain || isCorridorClosed ? "#FF0000" : "#2A2A2A"} 
-              strokeWidth="1.2" 
-            />
-            <text x="42" y="-42" fill={isCriticalRain || isCorridorClosed ? "#FF5555" : "#E4E3E0"} fontFamily="JetBrains Mono" fontSize="9" fontWeight="bold">
-              SONAPUR TUNNEL CUT
-            </text>
-            <text x="42" y="-28" fill={isCorridorClosed ? "#FF5555" : isCriticalRain ? "#FF0000" : "#00FF00"} fontFamily="JetBrains Mono" fontSize="8" fontWeight="bold">
-              {isCorridorClosed ? 'CORRIDOR SHUTDOWN' : isCriticalRain ? `LANDSLIDE PROB: ${simulationState.landslideProbability}%` : 'PASSABLE (WATCH)'}
-            </text>
-          </g>
-
-          {/* Waypoints Render */}
-          {INITIAL_WAYPOINTS.filter(w => w.id !== 'snp').map((wp) => {
-            const isSelected = selectedWaypoint?.id === wp.id;
-            return (
-              <g 
-                key={wp.id} 
-                transform={`translate(${wp.x}, ${wp.y})`}
-                className="cursor-pointer group"
-                onClick={() => setSelectedWaypoint(wp)}
-              >
-                <circle 
-                  cx="0" 
-                  cy="0" 
-                  r={isSelected ? "8" : wp.id === 'ghy' || wp.id === 'sil' ? "5" : "4"} 
-                  fill={wp.id === 'ghy' || wp.id === 'sil' ? '#F27D26' : '#888888'} 
-                  stroke={isSelected ? '#F27D26' : 'none'}
-                  strokeWidth="2"
-                />
-                <text 
-                  x="8" 
-                  y="4" 
-                  fill={wp.id === 'ghy' || wp.id === 'sil' ? '#E4E3E0' : '#888888'} 
-                  fontFamily="JetBrains Mono" 
-                  fontSize="9" 
-                  fontWeight={wp.id === 'ghy' || wp.id === 'sil' ? 'bold' : 'normal'}
-                  className="group-hover:fill-[#F27D26] transition-colors"
-                >
-                  {wp.name}
-                </text>
-              </g>
-            );
-          })}
-
-          {/* MAIN ANIMATED TRUCK: MED-NER-04 carrying critical insulin */}
-          <g 
-            id="truck"
-            transform={`translate(${truckPos.x}, ${truckPos.y})`}
-            className="cursor-pointer"
+          {/* Animated Truck */}
+          <CircleMarker
+            center={truckPos}
+            radius={isCriticalRain && !isDiverted ? 6 : 5}
+            pathOptions={{
+              color: '#FFFFFF',
+              fillColor: isDiverted ? '#00FFFF' : '#F27D26',
+              fillOpacity: 1,
+              weight: 1.5
+            }}
           >
-            <circle 
-              id="truck-pin"
-              cx="0" 
-              cy="0" 
-              r={isCriticalRain && !isDiverted ? "8" : "7"} 
-              fill={isDiverted ? "#00FFFF" : "#F27D26"} 
-              stroke="#FFFFFF"
-              strokeWidth="1.5"
-            >
-              <animate attributeName="r" values="6;8;6" dur="1.5s" repeatCount="indefinite" />
-            </circle>
+            <Popup className="tactical-popup">
+              <div className="bg-[#111111] p-1 border border-[#222222] text-xs font-mono">
+                <div className="font-bold text-white mb-1">
+                  MED-NER-04 {isDiverted ? '[DIVERTED]' : isCriticalRain ? '[ALERT]' : ''}
+                </div>
+                <div className={isDiverted ? 'text-[#00FFFF]' : 'text-[#F27D26]'}>
+                  {isDiverted ? 'NH-27 HAFLONG BYPASS' : 'CRITICAL INSULIN SUPPLY'}
+                </div>
+              </div>
+            </Popup>
+          </CircleMarker>
 
-            {/* Truck Pin Tag Card */}
-            <g transform="translate(12, -14)">
-              <rect 
-                x="0" 
-                y="-14" 
-                width="145" 
-                height="30" 
-                rx="4" 
-                fill="#111111" 
-                stroke={isDiverted ? "#00FFFF" : isCriticalRain ? "#FF0000" : "#2A2A2A"} 
-                strokeWidth="1" 
-              />
-              <text id="truck-label" x="6" y="-2" fill="#FFFFFF" fontFamily="JetBrains Mono" fontSize="9" fontWeight="bold">
-                MED-NER-04 {isDiverted ? '[DIVERTED]' : isCriticalRain ? '[ALERT]' : ''}
-              </text>
-              <text x="6" y="9" fill={isDiverted ? "#00FFFF" : "#F27D26"} fontFamily="JetBrains Mono" fontSize="7.5">
-                {isDiverted ? 'NH-27 HAFLONG BYPASS' : 'CRITICAL INSULIN SUPPLY'}
-              </text>
-            </g>
-          </g>
-        </svg>
+          <GisCustomControls />
+        </MapContainer>
 
         {/* Selected Waypoint Detail Modal / Flyout */}
         {selectedWaypoint && (
-          <div className="absolute top-14 left-3 z-30 w-64 bg-[#111111]/95 backdrop-blur-md p-3 rounded-xl border border-[#2A2A2A] shadow-2xl">
+          <div className="absolute top-14 left-3 z-[1000] w-64 bg-[#111111]/95 backdrop-blur-md p-3 rounded-xl border border-[#2A2A2A] shadow-2xl">
             <div className="flex items-center justify-between pb-1 border-b border-[#2A2A2A]">
               <span className="font-mono text-[10px] text-[#F27D26] font-bold uppercase">
                 WAYPOINT TELEMETRY
               </span>
-              <button 
+              <button
                 onClick={() => setSelectedWaypoint(null)}
                 className="text-[#888888] hover:text-white text-xs font-bold"
               >
@@ -440,7 +261,7 @@ export const GisMap: React.FC<GisMapProps> = ({
         )}
 
         {/* Floating HUD Window: Sonapur Choke Point Sensor Telemetry */}
-        <div className="absolute top-4 right-4 w-72 bg-[#111111]/95 backdrop-blur-md p-3 rounded-xl border border-[#2A2A2A] shadow-2xl z-20">
+        <div className="absolute top-4 right-4 w-72 bg-[#111111]/95 backdrop-blur-md p-3 rounded-xl border border-[#2A2A2A] shadow-2xl z-[1000] pointer-events-none">
           <div className="flex items-center justify-between pb-2 border-b border-[#2A2A2A]">
             <div className="flex items-center gap-1.5">
               <span className={`w-2 h-2 rounded-full ${isCriticalRain || isCorridorClosed ? 'bg-red-500 animate-ping' : 'bg-[#00FF00]'}`}></span>
@@ -461,7 +282,7 @@ export const GisMap: React.FC<GisMapProps> = ({
                 </span>
               </div>
               <div className="w-full bg-[#222222] h-1.5 rounded-full overflow-hidden">
-                <div 
+                <div
                   className={`h-full transition-all duration-300 ${isCriticalRain ? 'bg-[#F27D26]' : 'bg-[#00FF00]'}`}
                   style={{ width: `${Math.min(100, (simulationState.precipitation / 160) * 100)}%` }}
                 ></div>
@@ -477,7 +298,7 @@ export const GisMap: React.FC<GisMapProps> = ({
                 </span>
               </div>
               <div className="w-full bg-[#222222] h-1.5 rounded-full overflow-hidden">
-                <div 
+                <div
                   className={`h-full transition-all duration-300 ${simulationState.landslideProbability > 70 ? 'bg-red-600' : 'bg-[#00FF00]'}`}
                   style={{ width: `${simulationState.landslideProbability}%` }}
                 ></div>
@@ -488,8 +309,8 @@ export const GisMap: React.FC<GisMapProps> = ({
             <div className={`p-2 rounded-lg mt-1 flex items-center gap-2 border ${isCriticalRain ? 'bg-red-950/20 border-red-800/40' : 'bg-[#1A1A1A] border-[#2A2A2A]'}`}>
               <Radio size={14} className={isCriticalRain ? 'text-red-400 animate-pulse' : 'text-[#F27D26]'} />
               <span className={`font-mono text-[10px] leading-tight ${isCriticalRain ? 'text-red-400' : 'text-[#888888]'}`}>
-                {isCriticalRain 
-                  ? 'Active Slip Detected: Micro-tremors exceeding threshold' 
+                {isCriticalRain
+                  ? 'Active Slip Detected: Micro-tremors exceeding threshold'
                   : 'Sensors: Normal baseline (< 0.2 mm/h)'}
               </span>
             </div>
@@ -497,7 +318,7 @@ export const GisMap: React.FC<GisMapProps> = ({
         </div>
 
         {/* Bottom-Left GIS Map Legend */}
-        <div className="absolute bottom-3 left-3 bg-[#111111]/90 backdrop-blur-md p-2.5 rounded-xl border border-[#2A2A2A] flex flex-col gap-1.5 text-[#E4E3E0] z-10">
+        <div className="absolute bottom-3 left-3 bg-[#111111]/90 backdrop-blur-md p-2.5 rounded-xl border border-[#2A2A2A] flex flex-col gap-1.5 text-[#E4E3E0] z-[1000] pointer-events-none">
           <span className="font-mono text-[9px] text-[#888888] uppercase tracking-wider font-bold">
             Corridor Legend
           </span>
@@ -520,57 +341,29 @@ export const GisMap: React.FC<GisMapProps> = ({
       <div className="relative z-10 p-2.5 bg-[#0C0C0C] border-t border-[#2A2A2A] flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-mono text-[10px] text-[#666666] uppercase">Overlays:</span>
-          
-          <button 
+
+          <button
             id="overlay-doppler"
             onClick={() => setActiveOverlays(prev => ({ ...prev, doppler: !prev.doppler }))}
-            className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold flex items-center gap-1.5 transition-colors border ${
-              activeOverlays.doppler 
-                ? 'bg-[#F27D26] text-black border-[#F27D26]' 
+            className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold flex items-center gap-1.5 transition-colors border ${activeOverlays.doppler
+                ? 'bg-[#F27D26] text-black border-[#F27D26]'
                 : 'bg-[#1A1A1A] text-[#888888] border-[#2A2A2A] hover:text-white'
-            }`}
+              }`}
           >
             <CloudRain size={12} />
             Doppler [{activeOverlays.doppler ? 'ON' : 'OFF'}]
           </button>
 
-          <button 
-            id="overlay-contours"
-            onClick={() => setActiveOverlays(prev => ({ ...prev, contours: !prev.contours }))}
-            className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold flex items-center gap-1.5 transition-colors border ${
-              activeOverlays.contours 
-                ? 'bg-[#1A1A1A] text-[#E4E3E0] border-[#F27D26]' 
-                : 'bg-[#1A1A1A] text-[#888888] border-[#2A2A2A] hover:text-white'
-            }`}
-          >
-            <Layers size={12} />
-            Elevation Contours
-          </button>
-
-          <button 
+          <button
             id="overlay-patrols"
             onClick={() => setActiveOverlays(prev => ({ ...prev, patrols: !prev.patrols }))}
-            className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold flex items-center gap-1.5 transition-colors border ${
-              activeOverlays.patrols 
-                ? 'bg-[#00FF00]/20 text-[#00FF00] border-[#00FF00]/40' 
+            className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold flex items-center gap-1.5 transition-colors border ${activeOverlays.patrols
+                ? 'bg-[#00FF00]/20 text-[#00FF00] border-[#00FF00]/40'
                 : 'bg-[#1A1A1A] text-[#888888] border-[#2A2A2A] hover:text-white'
-            }`}
+              }`}
           >
             <Shield size={12} />
             Assam Rifles
-          </button>
-
-          <button 
-            id="overlay-thermal"
-            onClick={() => setActiveOverlays(prev => ({ ...prev, thermal: !prev.thermal }))}
-            className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold flex items-center gap-1.5 transition-colors border ${
-              activeOverlays.thermal 
-                ? 'bg-[#1A1A1A] text-[#F27D26] border-[#F27D26]' 
-                : 'bg-[#1A1A1A] text-[#888888] border-[#2A2A2A] hover:text-white'
-            }`}
-          >
-            <Thermometer size={12} />
-            Sat Thermal
           </button>
         </div>
 
@@ -582,3 +375,36 @@ export const GisMap: React.FC<GisMapProps> = ({
     </div>
   );
 };
+
+// Map controls overlay component to attach zoom actions to Leaflet Map instance
+function GisCustomControls() {
+  const map = useMap();
+
+  return (
+    <div className="absolute top-3 left-3 z-[1000] flex flex-col gap-1.5 bg-[#111111]/90 backdrop-blur-md p-1.5 rounded-lg border border-[#2A2A2A] shadow-lg">
+      <button
+        onClick={() => map.zoomIn()}
+        title="Zoom In"
+        className="w-7 h-7 rounded flex items-center justify-center text-[#E4E3E0] hover:bg-[#1A1A1A] hover:text-[#F27D26] transition-colors"
+      >
+        <ZoomIn size={15} />
+      </button>
+      <button
+        onClick={() => map.zoomOut()}
+        title="Zoom Out"
+        className="w-7 h-7 rounded flex items-center justify-center text-[#E4E3E0] hover:bg-[#1A1A1A] hover:text-[#F27D26] transition-colors"
+      >
+        <ZoomOut size={15} />
+      </button>
+      <button
+        onClick={() => {
+          map.setView([25.5788, 92.4827], 8);
+        }}
+        title="Reset View"
+        className="w-7 h-7 rounded flex items-center justify-center text-[#E4E3E0] hover:bg-[#1A1A1A] hover:text-[#F27D26] transition-colors"
+      >
+        <RotateCcw size={14} />
+      </button>
+    </div>
+  );
+}
