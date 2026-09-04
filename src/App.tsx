@@ -40,7 +40,7 @@ export default function App() {
   const handlePrecipitationChange = useCallback((value: number) => {
     setSimulationState((prev) => {
       const isOver100 = value > 100;
-      
+
       // Calculate realistic landslide probability
       let prob: number;
       if (value < 50) {
@@ -128,7 +128,7 @@ export default function App() {
             ...convoy,
             status: 'DIVERTED',
             route: 'NH-27 Haflong Bypass',
-            eta: '5.1h (Passable)',
+            eta: '6h 15m (Via NH-27 Bypass)',
             speed: 50,
             isDiverted: true,
             hazardAhead: undefined
@@ -144,7 +144,7 @@ export default function App() {
         id: `log-${Date.now()}`,
         timestamp: istTime,
         source: 'Command Authority',
-        message: 'Authorized Preemptive Supply Diversion for supply vehicle MED-NER-04 via NH-27 Haflong bypass. Cold chain insulin ETA updated to 5.1h (Passable).',
+        message: 'Authorized Preemptive Supply Diversion for supply vehicle MED-NER-04 via NH-27 Haflong bypass. Cold chain insulin ETA updated to 6h 15m (Via NH-27 Bypass).',
         severity: 'success'
       },
       ...prev

@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import { SimulationState, Convoy, DecisionLog } from '../types';
 import { GisMap } from './GisMap';
-import { 
-  Truck, 
-  AlertTriangle, 
-  Route, 
-  Search, 
-  Radio, 
-  Waves, 
-  Wind, 
-  Shield, 
-  Sliders, 
-  RotateCw, 
-  CheckCircle2, 
+import {
+  Truck,
+  AlertTriangle,
+  Route,
+  Search,
+  Radio,
+  Waves,
+  Wind,
+  Shield,
+  Sliders,
+  RotateCw,
+  CheckCircle2,
   ExternalLink,
   ChevronRight
 } from 'lucide-react';
@@ -51,11 +51,11 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
   const isDiverted = simulationState.isDiverted;
 
   const filteredConvoys = convoys.filter(c => {
-    const matchesCategory = 
-      selectedFilterCategory === 'ALL' || 
+    const matchesCategory =
+      selectedFilterCategory === 'ALL' ||
       c.type.toUpperCase() === selectedFilterCategory;
-    
-    const matchesText = 
+
+    const matchesText =
       c.code.toLowerCase().includes(filterText.toLowerCase()) ||
       c.name.toLowerCase().includes(filterText.toLowerCase()) ||
       c.cargo.toLowerCase().includes(filterText.toLowerCase()) ||
@@ -122,7 +122,7 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
             </span>
           </div>
 
-          <button 
+          <button
             id="sync-all-telemetry-btn"
             onClick={onSyncAllTelemetry}
             className="bg-[#1A1A1A] hover:bg-[#222222] border border-[#2A2A2A] text-white font-mono text-[11px] px-3 py-2 rounded-lg font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
@@ -155,23 +155,23 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
                 </span>
               </div>
               <div className="my-2">
-                <input 
-                  type="range" 
-                  id="rain-slider" 
-                  min="20" 
-                  max="160" 
+                <input
+                  type="range"
+                  id="rain-slider"
+                  min="20"
+                  max="160"
                   step="5"
-                  value={simulationState.precipitation} 
+                  value={simulationState.precipitation}
                   onChange={(e) => onPrecipitationChange(Number(e.target.value))}
                   className="w-full accent-[#F27D26] bg-[#222222] h-1.5 rounded-lg cursor-pointer"
                 />
-                <input 
-                  type="range" 
-                  id="rainfall-slider" 
-                  min="20" 
-                  max="160" 
+                <input
+                  type="range"
+                  id="rainfall-slider"
+                  min="20"
+                  max="160"
                   step="5"
-                  value={simulationState.precipitation} 
+                  value={simulationState.precipitation}
                   onChange={(e) => onPrecipitationChange(Number(e.target.value))}
                   className="hidden"
                 />
@@ -200,36 +200,34 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
             <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-3.5 flex flex-col justify-between shadow-md">
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-mono text-[#888888] uppercase">Rerouting Engine</span>
-                <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold ${
-                  isDiverted ? 'bg-[#00FF00]/10 text-[#00FF00]' : 'bg-[#F27D26]/10 text-[#F27D26]'
-                }`}>
+                <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold ${isDiverted ? 'bg-[#00FF00]/10 text-[#00FF00]' : 'bg-[#F27D26]/10 text-[#F27D26]'
+                  }`}>
                   {isDiverted ? 'DIVERTED' : 'STANDBY'}
                 </span>
               </div>
               <div className="my-2">
                 <div className="text-xs font-bold text-white mb-0.5">Preemptive Diversion</div>
                 <p className="text-[9px] text-[#888888] leading-tight">
-                  {isDiverted 
-                    ? 'MED-NER-04 actively diverted onto NH-27 Haflong bypass. Sonapur cut cleared.' 
+                  {isDiverted
+                    ? 'MED-NER-04 actively diverted onto NH-27 Haflong bypass. Sonapur cut cleared.'
                     : 'Reroutes MED-NER-04 via NH-27 Lumding-Haflong bypass safely.'}
                 </p>
               </div>
-              <button 
-                id="btn-reroute" 
-                onClick={onAuthorizeDiversion} 
-                className={`w-full py-2 font-bold text-[10px] uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md ${
-                  isDiverted
+              <button
+                id="btn-reroute"
+                onClick={onAuthorizeDiversion}
+                className={`w-full py-2 font-bold text-[10px] uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md ${isDiverted
                     ? 'bg-[#00FF00] hover:bg-[#00DD00] text-black'
                     : 'bg-[#F27D26] hover:bg-[#d96818] text-black'
-                }`}
+                  }`}
               >
                 <Route size={13} />
                 <span>{isDiverted ? 'Diversion Authorized (Active)' : 'Authorize Diversion'}</span>
               </button>
               {/* Alias for test compatibility */}
-              <button 
-                id="btn-authorize-preemptive-diversion" 
-                onClick={onAuthorizeDiversion} 
+              <button
+                id="btn-authorize-preemptive-diversion"
+                onClick={onAuthorizeDiversion}
                 className="hidden"
               >
                 Authorize
@@ -243,21 +241,19 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
                 <span id="risk-prob" className="text-3xl font-bold font-mono text-white">
                   {simulationState.landslideProbability}%
                 </span>
-                <span 
-                  id="risk-status" 
-                  className={`text-[10px] font-mono font-bold uppercase ${
-                    isCriticalRain ? 'text-red-500 animate-pulse' : 'text-[#00FF00]'
-                  }`}
+                <span
+                  id="risk-status"
+                  className={`text-[10px] font-mono font-bold uppercase ${isCriticalRain ? 'text-red-500 animate-pulse' : 'text-[#00FF00]'
+                    }`}
                 >
                   {isCriticalRain ? 'CRITICAL RISK' : 'LOW RISK'}
                 </span>
               </div>
               <div className="w-full bg-[#222222] h-2 rounded-full overflow-hidden mb-2">
-                <div 
-                  id="risk-bar" 
-                  className={`h-full transition-all duration-300 ${
-                    isCriticalRain ? 'bg-red-500' : 'bg-[#00FF00]'
-                  }`} 
+                <div
+                  id="risk-bar"
+                  className={`h-full transition-all duration-300 ${isCriticalRain ? 'bg-red-500' : 'bg-[#00FF00]'
+                    }`}
                   style={{ width: `${simulationState.landslideProbability}%` }}
                 ></div>
               </div>
@@ -341,7 +337,7 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
               <div className="bg-[#0C0C0C] p-2.5 rounded-lg border border-[#222222]">
                 <div className="text-[9px] text-[#888888]">ESTIMATED ETA</div>
                 <div id="truck-eta" className="text-[#F27D26] font-bold">
-                  {isDiverted ? '5h 06m (Via NH-27)' : '4h 12m (Via NH-6)'}
+                  {isDiverted ? '6h 15m (Via NH-27 Bypass)' : '4h 12m (Via NH-6)'}
                 </div>
               </div>
             </div>
@@ -350,7 +346,7 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
             <div className="flex items-center justify-between text-[10px] font-mono text-[#888888] pt-1 border-t border-[#222222]">
               <span>SPEED: <strong className="text-white">42 km/h</strong></span>
               <span>FUEL: <strong className="text-white">78%</strong></span>
-              <button 
+              <button
                 onClick={() => handleHailSatLink(selectedConvoy)}
                 className="text-[#00FFFF] hover:underline cursor-pointer"
               >
@@ -358,6 +354,49 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
               </button>
             </div>
           </div>
+
+          {/* AI Route Recommendation Panel */}
+          {simulationState.precipitation > 100 && (
+            <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-4 flex flex-col gap-3 shadow-xl">
+              <div className="flex items-center gap-2 border-b border-[#2A2A2A] pb-2">
+                <AlertTriangle size={16} className="text-yellow-500 animate-pulse" />
+                <span className="font-mono text-[11px] font-bold text-yellow-500 uppercase tracking-wider">
+                  ⚠️ RECOMMENDED ACTION: DIVERSIFY CORRIDOR
+                </span>
+              </div>
+              <div className="flex flex-col gap-2">
+                <div className="p-2.5 rounded-lg border border-red-900/50 bg-red-950/20">
+                  <div className="text-[10px] text-[#888888] font-mono mb-1">Route A: NH-6 Primary</div>
+                  <div className="flex justify-between text-[11px] font-mono mb-1">
+                    <span className="text-white">Distance: 312 km</span>
+                    <span className="text-red-400 font-bold">ETA: Indefinite (High Landslide Risk 88%)</span>
+                  </div>
+                  <div className="text-[10px] text-red-500 font-bold font-mono">STATUS: BLOCKED / HAZARDOUS AT SONAPUR</div>
+                </div>
+                <div className="p-2.5 rounded-lg border border-cyan-900/50 bg-cyan-950/20">
+                  <div className="text-[10px] text-[#888888] font-mono mb-1">Route B: NH-27 Bypass (AI OPTIMAL)</div>
+                  <div className="flex justify-between text-[11px] font-mono mb-1">
+                    <span className="text-white">Distance: 424 km (+112 km)</span>
+                    <span className="text-cyan-400 font-bold">ETA: 6h 15m (+1.8h)</span>
+                  </div>
+                  <div className="text-[9px] text-[#00FF00] font-mono">Hazard Risk: 4.2% (Clear) | Cold-Chain: 99.8% Safe</div>
+                </div>
+              </div>
+              {!isDiverted && (
+                <button
+                  onClick={onAuthorizeDiversion}
+                  className="mt-1 w-full py-2 bg-[#00F0FF] hover:bg-[#00D0FF] text-black font-bold rounded-lg text-[10px] font-mono uppercase tracking-wider transition-colors shadow-lg shadow-cyan-900/40"
+                >
+                  Authorize Preemptive Supply Diversion
+                </button>
+              )}
+              {isDiverted && (
+                <div className="mt-1 w-full py-2 bg-[#00FF00]/20 border border-[#00FF00]/40 text-[#00FF00] font-bold rounded-lg text-[10px] font-mono text-center uppercase tracking-wider">
+                  Diversion Authorized (Active)
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Active Incident / Decision Log Bento Card */}
           <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-4 flex flex-col gap-2 shadow-xl flex-1">
@@ -375,15 +414,14 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
               {decisionLogs.map((log) => (
                 <div key={log.id} className="p-2 bg-[#0C0C0C] rounded-lg border border-[#222222] flex flex-col gap-0.5">
                   <div className="flex items-center justify-between">
-                    <span className={`font-bold ${
-                      log.severity === 'critical' 
-                        ? 'text-red-400' 
-                        : log.severity === 'warning' 
-                        ? 'text-[#F27D26]' 
-                        : log.severity === 'success' 
-                        ? 'text-[#00FF00]' 
-                        : 'text-[#00FFFF]'
-                    }`}>
+                    <span className={`font-bold ${log.severity === 'critical'
+                        ? 'text-red-400'
+                        : log.severity === 'warning'
+                          ? 'text-[#F27D26]'
+                          : log.severity === 'success'
+                            ? 'text-[#00FF00]'
+                            : 'text-[#00FFFF]'
+                      }`}>
                       [{log.timestamp}]
                     </span>
                     <span className="text-[9px] text-[#666666]">{log.source}</span>
@@ -437,11 +475,10 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
                 <button
                   key={cat}
                   onClick={() => setSelectedFilterCategory(cat)}
-                  className={`font-mono text-[9px] px-2 py-0.5 rounded font-bold uppercase transition-colors whitespace-nowrap cursor-pointer ${
-                    selectedFilterCategory === cat
+                  className={`font-mono text-[9px] px-2 py-0.5 rounded font-bold uppercase transition-colors whitespace-nowrap cursor-pointer ${selectedFilterCategory === cat
                       ? 'bg-[#F27D26] text-black'
                       : 'bg-[#1A1A1A] text-[#888888] hover:text-white'
-                  }`}
+                    }`}
                 >
                   {cat}
                 </button>
@@ -458,23 +495,21 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
                     key={c.id}
                     id={`convoy-card-${c.code.toLowerCase()}`}
                     onClick={() => setSimulationState(prev => ({ ...prev, selectedConvoyId: c.id }))}
-                    className={`p-2 rounded border cursor-pointer transition-all flex items-center justify-between text-xs font-mono ${
-                      isSelected 
-                        ? 'bg-[#1A1A1A] border-[#F27D26]' 
+                    className={`p-2 rounded border cursor-pointer transition-all flex items-center justify-between text-xs font-mono ${isSelected
+                        ? 'bg-[#1A1A1A] border-[#F27D26]'
                         : 'bg-[#0C0C0C] border-[#222222] hover:border-[#444444]'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-white">{c.code}</span>
                       <span className="text-[10px] text-[#888888] truncate max-w-[110px]">{c.cargo}</span>
                     </div>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
-                      isMed && isDiverted 
-                        ? 'bg-[#00FF00]/20 text-[#00FF00]' 
-                        : isMed && isCriticalRain 
-                        ? 'bg-red-900/40 text-red-400' 
-                        : 'text-[#888888]'
-                    }`}>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${isMed && isDiverted
+                        ? 'bg-[#00FF00]/20 text-[#00FF00]'
+                        : isMed && isCriticalRain
+                          ? 'bg-red-900/40 text-red-400'
+                          : 'text-[#888888]'
+                      }`}>
                       {isMed && isDiverted ? 'DIVERTED' : isMed && isCriticalRain ? 'ALERT' : c.status}
                     </span>
                   </div>
@@ -494,7 +529,7 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
                 <Radio size={16} className="animate-pulse" />
                 <span className="font-mono text-xs font-bold uppercase">SAT-LINK CHANNEL ACTIVE</span>
               </div>
-              <button 
+              <button
                 onClick={() => setHailModalOpen(false)}
                 className="text-[#888888] hover:text-white cursor-pointer"
               >

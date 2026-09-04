@@ -47,6 +47,7 @@ const nh27Coords: [number, number][] = [
   [26.34, 92.68], // Nagaon
   [25.75, 93.17], // Lumding
   [25.17, 93.02], // Haflong (Dima Hasao)
+  [24.95, 92.70], // Sub-route connector
   [24.83, 92.77]  // Silchar
 ];
 
@@ -162,23 +163,24 @@ export const GisMap: React.FC<GisMapProps> = ({
             positions={nh27Coords}
             pathOptions={{
               color: '#00F0FF',
-              weight: 4,
-              dashArray: '8, 8',
-              opacity: isDiverted ? 1 : 0.35
+              weight: 5,
+              dashArray: '6, 6'
             }}
-          />
+          >
+            <Tooltip sticky className="tactical-tooltip">NH-27 Haflong Bypass | 424 km | 100% Passable (Recommended)</Tooltip>
+          </Polyline>
 
           {/* ROUTE 1: PRIMARY DIRECT NH-6 */}
           <Polyline
             positions={nh6Coords}
             pathOptions={{
-              color: '#EF4444',
+              color: simulationState.precipitation > 100 ? '#EF4444' : '#10B981',
               weight: 5,
-              dashArray: isCorridorClosed ? '4 4' : undefined,
-              opacity: isDiverted ? 0.35 : 1
             }}
             className={(isCorridorClosed || isCriticalRain) && !isDiverted ? 'animate-pulse' : ''}
-          />
+          >
+            <Tooltip sticky className="tactical-tooltip">NH-6 Hill Lifeline | 312 km | Vulnerable to Landslides</Tooltip>
+          </Polyline>
 
           {/* Sonapur Choke Point */}
           <CircleMarker
