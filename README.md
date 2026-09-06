@@ -1,20 +1,14 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# AccessNER — Final 3-Page Web UI
 
-# Run and deploy your AI Studio app
+Included pages:
+1. Dashboard — main map, route risk and navigation view
+2. Route Planner — route selection with vehicle and cargo summary
+3. Alerts — major alerts and incidents
 
-This contains everything you need to run your app locally.
+Files:
+- index.html
+- style.css
+- script.js
 
-View your app in AI Studio: https://ai.studio/apps/c08469ab-bcc7-4a8a-86eb-6c54b918590d
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Open index.html in any modern browser.
+The interactions between the three pages are included for prototype/demo use.

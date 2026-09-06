@@ -1,21 +1,180 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MDoNER Logistics Intelligence Core</title>
-    <meta name="description" content="Tactical GIS logistics and predictive landslide resilience platform for the Guwahati-Silchar lifeline corridor (Problem Statement 26002)." />
-    <meta property="og:title" content="MDoNER Logistics Intelligence Core" />
-    <meta property="og:description" content="Tactical GIS logistics and predictive landslide resilience platform for the Guwahati-Silchar lifeline corridor (Problem Statement 26002)." />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
 
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AccessNER</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="bg"></div>
+  <header>
+    <div class="brand">
+      <div class="logo">N</div>
+      <div><b>AccessNER <i>AI</i></b><small>AI-Powered Risk Prediction for Safer Journeys</small></div>
+    </div>
+    <div class="tools"><button>◎ Language⌄</button><button class="bell">♧<sup>3</sup></button><button class="driver">●
+        &nbsp; Driver<br><small>ID: DRV12345</small>⌄</button></div>
+  </header>
+  <div class="app">
+    <aside><button class="nav" data-page="dashboard">▦ <span>Dashboard</span></button><button class="nav active"
+        data-page="route">♧ <span>Route Planner</span></button><button class="nav" data-page="alerts">♧
+        <span>Alerts</span><b>3</b></button>
+      <div class="quote">Drive Safe.<br>Reach Safe.<br>Stronger North East.</div>
+    </aside>
+    <main>
+
+      <section id="route" class="page">
+        <h1>Select Your Route</h1>
+        <p class="subtitle">Choose the best and safest route for your journey</p>
+        <div class="route-grid">
+          <div class="left-col">
+            <div class="panel route-form">
+              <label>From<div class="field"><i class="dot green"></i><input value="Guwahati, Assam"></div></label>
+              <label>To<div class="field"><i class="dot red"></i><input value="Shillong, Meghalaya"><button
+                    id="swap">↕</button></div></label>
+            </div>
+            <div class="panel cargo">
+              <h3>Vehicle & Cargo Summary</h3>
+              <div><span>▱</span>
+                <p><small>Vehicle Type</small><b>Truck</b></p>
+              </div>
+              <div><span>▣</span>
+                <p><small>Load Type</small><b>Perishable Goods (Fruits)</b></p>
+              </div>
+              <div><span>♧</span>
+                <p><small>Weight</small><b>8 Tons</b></p>
+              </div>
+              <div><span class="pink">♨</span>
+                <p><small>Sensitivity to Weather</small><b class="danger">● High</b></p>
+              </div>
+            </div>
+            <button class="primary" id="analyze">✦ &nbsp; Analyze Routes</button>
+          </div>
+          <div class="panel routes">
+            <h3>Available Routes</h3>
+            <article class="route-card">
+              <div><b>Route 1 (via NH6)</b><em>Recommended</em></div>
+              <section><span><small>Distance</small>151 km</span><span><small>Est. Time</small>3h
+                  20m</span><span><small>Risk Level</small><strong class="moderate">Moderate</strong></span><button
+                  class="choose">Select Route</button></section>
+            </article>
+            <article class="route-card">
+              <div><b>Route 2 (via SH5)</b></div>
+              <section><span><small>Distance</small>168 km</span><span><small>Est. Time</small>3h
+                  50m</span><span><small>Risk Level</small><strong class="low">Low</strong></span><button
+                  class="choose">Select Route</button></section>
+            </article>
+            <article class="route-card">
+              <div><b>Route 3 (via Alternate)</b></div>
+              <section><span><small>Distance</small>192 km</span><span><small>Est. Time</small>4h
+                  30m</span><span><small>Risk Level</small><strong class="high">High</strong></span><button
+                  class="choose">Select Route</button></section>
+            </article>
+            <div class="note">♢ &nbsp; Route risk is calculated based on weather, terrain, traffic, incidents and your
+              cargo sensitivity.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="dashboard" class="page hidden">
+        <div class="metrics">
+          <div class="metric score"><small>Overall Risk Score</small>
+            <div><b>74</b><span>/100</span><em>High Risk</em></div><i><u></u></i>
+          </div>
+          <div class="metric"><small>Distance</small><b>142 <span>km</span></b></div>
+          <div class="metric"><small>Est. Time</small><b>2h 45m</b></div>
+          <div class="metric"><small>Weather</small><b>☔ <span>Heavy Rain</span></b></div>
+          <div class="metric"><small>Traffic</small><b class="orange">▱ <span>Moderate</span></b></div>
+        </div>
+        <div class="mapbox">
+          <div class="map-tabs"><button class="on">Map</button><button>Satellite</button></div>
+          <div class="map">
+            <div id="gis-map" style="width: 100%; height: 290px; border-radius: 9px;"></div>
+          </div>
+          <div class="legend"><span><i class="g"></i>Low Risk</span><span><i class="y"></i>Moderate Risk</span><span><i
+                class="r"></i>High Risk</span><span><i class="s"></i>Severe Risk</span><span>△ Incident / Alert</span>
+          </div>
+        </div>
+        <div class="bottom">
+          <div class="panel alternative">
+            <h3>Safer Alternative Route</h3><b>Via SH5</b><small>168 km · 3h 50m</small><em>Low
+              Risk</em><button>View</button>
+          </div>
+          <div class="risk">
+            <h3>Risk Level: High Risk</h3>
+            <p>This route may not be safe for your cargo due to heavy rain and landslide-prone areas.</p><b>!</b>
+          </div>
+          <div class="stack"><button class="start-btn">⌁ &nbsp; Start Navigation</button><button class="change"
+              id="change">⟳ &nbsp; Change Route</button></div>
+        </div>
+        <div class="major"><strong>⚠</strong>
+          <p><b>Major Alert</b><br>Heavy rainfall and possible landslides in Ri Bhoi district within next 24 hours.</p>
+          <span>Affected Areas: Ri Bhoi, East Khasi Hills, Jaintia Hills</span><button id="allalerts">View All
+            Alerts</button><i>♧<sup>3</sup></i>
+        </div>
+      </section>
+
+      <section id="alerts" class="page hidden">
+        <div class="alert-head">
+          <div>
+            <h1>All Alerts</h1>
+            <p class="subtitle">Stay updated with real-time alerts and incidents</p>
+          </div><select>
+            <option>All Regions</option>
+            <option>Assam</option>
+            <option>Meghalaya</option>
+          </select>
+        </div>
+        <div class="filters"><button
+            class="selected">All</button><button>Weather</button><button>Traffic</button><button>Landslides</button><button>Waterlogging</button><button>Roadblocks</button>
+        </div>
+        <div class="alert-list">
+          <article><strong class="symbol red">⚠</strong>
+            <div><b>Heavy Rainfall Warning</b>
+              <p>Heavy rainfall expected in Ri Bhoi district. Avoid travel if not necessary.</p>
+            </div>
+            <div><small>Affected Area</small><b>Ri Bhoi, Meghalaya</b></div>
+            <div><small>Time</small><b>10 May 2025, 08:45 AM</b></div>
+            <div><small>Severity</small><em class="high">High</em></div>
+          </article>
+          <article><strong class="symbol orange">△</strong>
+            <div><b>Landslide Warning</b>
+              <p>Landslide-prone conditions on NH6 near Umiam Lake.</p>
+            </div>
+            <div><small>Affected Area</small><b>Umiam Lake Area</b></div>
+            <div><small>Time</small><b>10 May 2025, 08:30 AM</b></div>
+            <div><small>Severity</small><em class="moderate">Moderate</em></div>
+          </article>
+          <article><strong class="symbol blue">☔</strong>
+            <div><b>Waterlogging Report</b>
+              <p>Waterlogging reported on SH5 near Mawlyngngad.</p>
+            </div>
+            <div><small>Affected Area</small><b>Mawlyngngad</b></div>
+            <div><small>Time</small><b>10 May 2025, 08:15 AM</b></div>
+            <div><small>Severity</small><em class="low">Low</em></div>
+          </article>
+          <article><strong class="symbol purple">▱</strong>
+            <div><b>Road Block</b>
+              <p>Temporary road block due to maintenance work.</p>
+            </div>
+            <div><small>Affected Area</small><b>NH6, Jaintia Hills</b></div>
+            <div><small>Time</small><b>10 May 2025, 07:50 AM</b></div>
+            <div><small>Severity</small><em class="low">Low</em></div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="script.js"></script>
+</body>
+
+</html>
